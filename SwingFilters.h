@@ -10,12 +10,15 @@
 #include "Line.h"
 #include <math.h>
 
+/**
+ * 数据点之于拟合直线的状态表
+ */
 enum POINT_STATE {
     BELOW_U_MORE_THAN_E,    //低于上直线U且超过偏差范围
     ABOVE_L_MORE_THAN_E,    //高于下直线L且超过偏差范围
     BOTH_MORE_THAN_E,       //两者都超过偏差范围
-    ACCEPT,                 //数据点在范围内
-    REJECT,                 //拒绝数据点
+    ACCEPT,                 //数据点在范围内,可以拟合
+    REJECT,                 //数据点在范围外,拒绝拟合
 };
 
 /**
@@ -34,6 +37,7 @@ struct SF_DATA {
  * Swing_Filters类
  */
 class Swing_Filters {
+
 private:
     //拟合过程直线的数据结构
     SF_DATA sf_data;
@@ -41,8 +45,8 @@ private:
     float deviation_tolerance;
 
     //拟合直线参数计算的中间值
-    float aig_dividend;
-    float aig_divisor;
+    float aig_dividend; //被除数
+    float aig_divisor;  //除数
 
 public:
     //初始化
