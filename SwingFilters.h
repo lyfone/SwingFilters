@@ -48,16 +48,6 @@ private:
     float aig_dividend; //被除数
     float aig_divisor;  //除数
 
-public:
-    //初始化
-    Swing_Filters(float e);
-
-    //开始拟合
-    void start(MyPoint p1, MyPoint p2);
-
-    //新的数据点到达
-    bool push_point(MyPoint p);
-
     //判断数据点对于拟合直线的状态
     POINT_STATE check_point(MyPoint p);
 
@@ -66,6 +56,22 @@ public:
 
     //更新中间结果
     void update_Aig(MyPoint p);
+
+public:
+    //初始化
+    Swing_Filters(float e);
+
+    //开始拟合
+    void start(MyPoint p1, MyPoint p2, bool b);
+
+    //新的数据点到达
+    bool push_point(MyPoint p);
+
+    //读取拟合结果
+    Line get_res_line();
+
+    //重置
+    void reset();
 };
 
 /**
@@ -77,14 +83,18 @@ Swing_Filters::Swing_Filters(float e) {
 }
 
 /**
- * 开始线性拟合
- * @param p1 起始点p1
- * @param p2 起始点p2
+ * 开始进行拟合
+ * @param p1    拟合起点p1
+ * @param p2    拟合起点p2
+ * @param b     当为true时表示起点p1为数据点
+ *              当为false时表示起点p1为上一拟合线段终点
  */
-void Swing_Filters::start(MyPoint p1, MyPoint p2) {
+void Swing_Filters::start(MyPoint p1, MyPoint p2, bool b) {
     sf_data.u.update_start(p1);
     sf_data.l.update_start(p1);
     sf_data.fitting_line.update_start(p1);
+    sf_data.fitting_line.inc_len();
+    if(b) sf_data.fitting_line.start_valid = true;
 
     MyPoint temp = p2;
 
@@ -124,15 +134,17 @@ bool Swing_Filters::push_point(MyPoint p) {
             sf_data.l.update_k_by_point(tmp);
             break;
         }
-        case REJECT:
+        case REJECT: {
             float para = get_a();
             sf_data.fitting_line.update_k(para);
             return false;
+        }
         case ACCEPT:
             break;
         default:
             break;
     }
+    sf_data.fitting_line.inc_len();
     update_Aig(p);
     return true;
 }
@@ -145,14 +157,14 @@ bool Swing_Filters::push_point(MyPoint p) {
 POINT_STATE Swing_Filters::check_point(MyPoint p) {
     float y1 = sf_data.u.get_point_by_index(p.index);
     float y2 = sf_data.l.get_point_by_index(p.index);
+    if ((y1 + deviation_tolerance < p.point) || (y2 - deviation_tolerance > p.point))
+        return REJECT;
     if ((y1 - deviation_tolerance > p.point) && (y2 + deviation_tolerance < p.point))
         return BOTH_MORE_THAN_E;
     if (y1 - deviation_tolerance > p.point)
         return BELOW_U_MORE_THAN_E;
     if (y2 + deviation_tolerance < p.point)
         return ABOVE_L_MORE_THAN_E;
-    if ((y1 + deviation_tolerance < p.point) && (y2 - deviation_tolerance > p.point))
-        return REJECT;
     return ACCEPT;
 }
 
@@ -164,7 +176,7 @@ float Swing_Filters::get_a() {
     float aig = aig_dividend / aig_divisor;
     float aiu = sf_data.u.k;
     float ail = sf_data.l.k;
-    return fmax(fmin(aig,aiu),ail);
+    return fmax(fmin(aig, aiu), ail);
 }
 
 /**
@@ -174,6 +186,28 @@ float Swing_Filters::get_a() {
 void Swing_Filters::update_Aig(MyPoint p) {
     aig_dividend += (p.point - sf_data.fitting_line.p.point) * (p.index - sf_data.fitting_line.p.index);
     aig_divisor += (p.index - sf_data.fitting_line.p.index) * (p.index - sf_data.fitting_line.p.index);
+}
+
+/**
+ * 读取拟合结果
+ * @return
+ */
+Line Swing_Filters::get_res_line() {
+    if (sf_data.fitting_line.valid)
+        return sf_data.fitting_line;
+    else {
+        //TODO 如果拟合线段不存在，即还没有求解出来，则不可读取拟合结果
+    }
+}
+
+/**
+ * 重置
+ */
+void Swing_Filters::reset() {
+    sf_data.fitting_line = Line();
+    sf_data.l = sf_data.u = Line();
+    aig_divisor = 0.0;
+    aig_dividend = 0.0;
 }
 
 #endif //SWING_FILTERS_SWINGFILTERS_H

@@ -7,16 +7,23 @@
 
 #pragma once
 
-struct MyPoint{
+struct MyPoint {
     int index;
     float point;
-    bool valid;
 
     MyPoint();
+
+    MyPoint(int i, float p);
 };
 
 MyPoint::MyPoint() {
-    valid = false;
+
 }
+
+MyPoint::MyPoint(int i, float p) {
+    index = i;
+    point = p;
+}
+
 
 #endif //SWING_FILTERS_POINT_H
